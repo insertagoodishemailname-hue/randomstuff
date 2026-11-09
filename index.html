@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CineVerse Explorer | Vue.js</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/vue@3.4.21/dist/vue.global.js"></script>
+</head>
+<body>
+
+  <div id="app">
+
+    <!-- Navbar -->
+    <header class="navbar">
+      <h1>CineVerse Explorer</h1>
+      <nav class="menu">
+        <button :class="{ active: currentTab === 'shows' }" @click="changeTab('shows')">TV Shows</button>
+        <button :class="{ active: currentTab === 'trivia' }" @click="changeTab('trivia')">Movie Trivia</button>
+        <button :class="{ active: currentTab === 'animals' }" @click="changeTab('animals')">Intermission</button>
+        <button :class="{ active: currentTab === 'predictor' }" @click="changeTab('predictor')">Name Predictor</button>
+      </nav>
+    </header>
+
+    <!-- Title section -->
+    <section class="hero">
+      <h2>{{ titles[currentTab][0] }}</h2>
+      <p>{{ titles[currentTab][1] }}</p>
+    </section>
+
+    <main class="container">
+
+      <!-- Search and filter (shows and predictor tabs) -->
+      <section class="controls" v-if="currentTab === 'shows' || currentTab === 'predictor'">
+        <input type="text" v-model="searchBox" @keydown.enter="loadData"
+               :placeholder="currentTab === 'shows' ? 'Search TV shows (e.g. batman)...' : 'Enter a first name (e.g. john)...'">
+        <select v-if="currentTab === 'shows'" v-model="filterBox" @change="loadData">
+          <option v-for="opt in filterOptions.shows" :value="opt[0]">{{ opt[1] }}</option>
+        </select>
+        <button @click="loadData">Search</button>
+      </section>
+
+      <!-- Reload button (trivia and cats tabs) -->
+      <section class="controls" v-else>
+        <button @click="loadData">{{ currentTab === 'trivia' ? 'New questions' : 'New cats' }}</button>
+      </section>
+
+      <!-- Loading state -->
+      <section v-if="loading" class="loading">
+        <div class="spinner"></div>
+        Loading content...
+      </section>
+
+      <!-- Error state -->
+      <section v-else-if="errorState" class="error">
+        <p>Something went wrong. Please check your connection and try again.</p>
+        <button class="retry" @click="loadData">Try again</button>
+      </section>
+
+      <!-- Empty state -->
+      <section v-else-if="currentList.length === 0" class="empty">
+        No results found. Try another search or filter.
+      </section>
+
+      <!-- Results grid -->
+      <section v-else class="grid">
+
+        <!-- Tab 1: TV Shows (API 1: TVMaze) -->
+        <template v-if="currentTab === 'shows'">
+          <article v-for="show in currentList" :key="show.id" class="card clickable" @click="showDetails(show)">
+            <img v-if="show.image" :src="show.image.medium" :alt="show.name">
+            <p v-else class="noimg">No image</p>
+            <div class="info">
+              <h3>{{ show.name }}</h3>
+              <p>{{ show.genres.length ? show.genres.join(', ') : 'General' }} - Rating: {{ show.rating.average || 'N/A' }}</p>
+            </div>
+          </article>
+        </template>
+
+        <!-- Tab 2: Movie Trivia (API 2: Open Trivia DB) -->
+        <template v-if="currentTab === 'trivia'">
+          <article v-for="(trivia, index) in currentList" :key="index" class="card joke">
+            <span class="tag">Question #{{ index + 1 }}</span>
+            <p class="question" v-html="trivia.question"></p>
+            <p class="punchline">Answer: <span v-html="trivia.correct_answer"></span></p>
+          </article>
+        </template>
+
+        <!-- Tab 3: Cats (API 3: The Cat API) -->
+        <template v-if="currentTab === 'animals'">
+          <article v-for="(animal, index) in currentList" :key="index" class="card">
+            <img :src="animal.url" alt="A random cat">
+            <div class="info">
+              <h3>Studio Mascot #{{ index + 1 }}</h3>
+              <p>Brought to you by The Cat API</p>
+            </div>
+          </article>
+        </template>
+
+        <!-- Tab 4: Name Predictor (API 4: Agify) -->
+        <template v-if="currentTab === 'predictor'">
+          <article v-for="(pred, index) in currentList" :key="index" class="card joke result">
+            <span class="tag">Analysis Result</span>
+            <h3>Name: {{ pred.name }}</h3>
+            <p><b>Estimated Age:</b> {{ pred.age || 'Unknown' }} years old</p>
+            <p class="small">Sample Count: {{ pred.count }}</p>
+          </article>
+        </template>
+
+      </section>
+    </main>
+
+    <!-- Details popup (for TV Shows) -->
+    <div class="modal" :class="{ hidden: !modalOpen }" @click.self="closeModal">
+      <article class="modal-box">
+        <button class="close" @click="closeModal">X</button>
+        <div v-if="selectedItem">
+          <img v-if="selectedItem.image" :src="selectedItem.image.medium" :alt="selectedItem.name">
+          <h2>{{ selectedItem.name }}</h2>
+          <p v-html="selectedItem.summary"></p>
+          <p><b>Genres:</b> {{ selectedItem.genres.length ? selectedItem.genres.join(', ') : 'N/A' }}</p>
+          <p><b>Rating:</b> {{ selectedItem.rating.average || 'N/A' }}</p>
+          <p><b>Language:</b> {{ selectedItem.language }}</p>
+          <p><b>Premiered:</b> {{ selectedItem.premiered || 'N/A' }}</p>
+          <p><b>Status:</b> {{ selectedItem.status }}</p>
+          <p>
+            <b>Official Site:</b>
+            <a :href="selectedItem.officialSite" target="_blank" v-if="selectedItem.officialSite">Visit Link</a>
+            <span v-else>N/A</span>
+          </p>
+        </div>
+      </article>
+    </div>
+
+    <footer>APIs used: TVMaze API, Open Trivia DB, The Cat API, Agify API | Vue.js &amp; Vercel</footer>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
